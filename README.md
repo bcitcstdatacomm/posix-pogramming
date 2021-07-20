@@ -1,2 +1,2 @@
-# posix-pogramming
+# posix-programming
 POSIX stuff
