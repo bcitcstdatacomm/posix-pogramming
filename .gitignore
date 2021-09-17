@@ -1,19 +1,8 @@
-
 # Created by https://www.toptal.com/developers/gitignore/api/linux,macos,windows,intellij+all,visualstudiocode,visualstudio,emacs,cmake,valgrind
 # Edit at https://www.toptal.com/developers/gitignore?templates=linux,macos,windows,intellij+all,visualstudiocode,visualstudio,emacs,cmake,valgrind
 
-### CMake ###
-CMakeLists.txt.user
-CMakeCache.txt
-CMakeFiles
-CMakeScripts
-Testing
-Makefile
-cmake_install.cmake
-install_manifest.txt
-compile_commands.json
-CTestTestfile.cmake
-_deps
+*.o
+tester
 
 ### CMake Patch ###
 # External projects
