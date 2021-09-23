@@ -14,16 +14,17 @@ int main(void)
     struct dc_posix_env env;
     int                 fd;
     char                chars[BUF_SIZE];
-    ssize_t             nread;
     int                 ret_val;
 
-    dc_error_init(&err);
+    dc_error_init(&err, NULL);
     dc_posix_env_init(&env, NULL);
     fd      = dc_open(&env, &err, "./makefile", DC_O_RDONLY, 0);
     ret_val = EXIT_SUCCESS;
 
     if(dc_error_has_no_error(&err))
     {
+        ssize_t nread;
+
         while((nread = dc_read(&env, &err, fd, chars, BUF_SIZE)) > 0)
         {
             if(dc_error_has_error(&err))
@@ -31,7 +32,7 @@ int main(void)
                 ret_val = 1;
             }
 
-            dc_write(&env, &err, STDOUT_FILENO, chars, nread);
+            dc_write(&env, &err, STDOUT_FILENO, chars, (size_t)nread);
 
             if(dc_error_has_error(&err))
             {

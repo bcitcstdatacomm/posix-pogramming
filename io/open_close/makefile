@@ -2,14 +2,14 @@ SOURCES = main.c
 OBJECTS = main.o
 BINARY = tester
 CFLAGS += -D_POSIX_C_SOURCE=200809L -D_XOPEN_SOURCE=700
-LDFLAGS += -ldc_posix -ldc_error
+LDLIBS += -ldc_posix -ldc_error
 
 .PHONY: all
 all: $(BINARY)
 
 .PHONY: tester
 $(BINARY) : $(OBJECTS)
-	$(CC) -o $(BINARY) $(LDFLAGS) $(LDLIBS) $(OBJECTS)
+	$(CC) -o $(BINARY) $(OBJECTS) $(LDFLAGS) $(LDLIBS)
 
 $(OBJECTS):
 
