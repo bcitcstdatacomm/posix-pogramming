@@ -7,6 +7,7 @@
 #include <dc_posix/sys/dc_socket.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 
 static void error_reporter(const struct dc_error *err);
@@ -151,12 +152,13 @@ void receive_data(struct dc_posix_env *env, struct dc_error *err, int fd, size_t
     // more efficient would be to allocate the buffer in the caller (main) so we don't have to keep
     // mallocing and freeing the same data over and over again.
     char *data;
+    ssize_t count;
 
     data = dc_malloc(env, err, size);
 
-    while(!(exit_flag) && dc_read(env, err, fd, data, size) > 0 && dc_error_has_no_error(err))
+    while(!(exit_flag) && (count = dc_read(env, err, fd, data, size)) > 0 && dc_error_has_no_error(err))
     {
-        printf("READ %s\n", data);
+        dc_write(env, err, STDOUT_FILENO, data, (size_t)count);
     }
 
     dc_free(env, data, size);
