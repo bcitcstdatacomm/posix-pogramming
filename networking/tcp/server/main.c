@@ -12,6 +12,7 @@ static void error_reporter(const struct dc_error *err);
 static void trace_reporter(const struct dc_posix_env *env, const char *file_name,
                            const char *function_name, size_t line_number);
 static void quit_handler(int sig_num);
+void receive_data(struct dc_error *err, struct dc_posix_env *env, int fd, size_t size);
 
 
 static volatile sig_atomic_t exit_flag;
@@ -117,14 +118,7 @@ int main(void)
 
                                 if(dc_error_has_no_error(&err))
                                 {
-                                    char data[1024];
-
-                                    while(!(exit_flag) && dc_read(&env, &err, client_socket_fd, data, 1024) > 0 && dc_error_has_no_error(&err))
-                                    {
-                                        printf("READ %s\n", data);
-                                    }
-
-                                    dc_close(&env, &err, client_socket_fd);
+                                    receive_data(&env, &err, client_socket_fd, 1024);
                                 }
                                 else
                                 {
@@ -148,6 +142,24 @@ int main(void)
 
     return EXIT_SUCCESS;
 }
+
+// Look at the code in the client, you could do the same thing 
+void receive_data(struct dc_error *err, struct dc_posix_env *env, int fd, size_t size)
+{
+    char *data;
+
+    data = dc_malloc(env, err, size);
+
+    while(!(exit_flag) && dc_read(&env, &err, client_socket_fd, data, size) > 0 && dc_error_has_no_error(&err))
+    {
+        printf("READ %s\n", data);
+    }
+
+    dc_free(&env, data, size);
+}
+
+dc_close(&env, &err, client_socket_fd);
+
 
 static void quit_handler(int sig_num)
 {
