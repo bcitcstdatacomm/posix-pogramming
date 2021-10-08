@@ -9,7 +9,7 @@ all: $(BINARY)
 
 .PHONY: tester
 $(BINARY) : $(OBJECTS)
-	$(CC) -o $(BINARY) $(LDFLAGS) $(LDLIBS) $(OBJECTS)
+	$(CC) -o $(BINARY) $(OBJECTS) $(LDFLAGS) $(LDLIBS)
 
 $(OBJECTS):
 
