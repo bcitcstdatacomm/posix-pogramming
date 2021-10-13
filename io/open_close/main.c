@@ -30,6 +30,7 @@ int main(void)
             if(dc_error_has_error(&err))
             {
                 ret_val = 1;
+                break;
             }
 
             dc_write(&env, &err, STDOUT_FILENO, chars, (size_t)nread);
@@ -37,6 +38,7 @@ int main(void)
             if(dc_error_has_error(&err))
             {
                 ret_val = 2;
+                break;
             }
         }
 
