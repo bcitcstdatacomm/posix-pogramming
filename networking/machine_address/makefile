@@ -2,7 +2,7 @@ SOURCES = main.c
 OBJECTS = main.o
 BINARY = tester
 CFLAGS += -D_POSIX_C_SOURCE=200809L -D_XOPEN_SOURCE=700
-LDFLAGS += -ldc_error -ldc_posix
+LDLIBS += -ldc_error -ldc_posix
 
 .PHONY: all
 all: $(BINARY)

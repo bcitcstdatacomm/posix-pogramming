@@ -1,3 +1,4 @@
+#include <dc_network/options.h>
 #include <dc_posix/dc_netdb.h>
 #include <dc_posix/dc_posix_env.h>
 #include <dc_posix/dc_unistd.h>
@@ -5,6 +6,7 @@
 #include <dc_posix/dc_string.h>
 #include <dc_posix/dc_stdlib.h>
 #include <dc_posix/sys/dc_socket.h>
+#include <dc_util/types.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -14,13 +16,13 @@ static void error_reporter(const struct dc_error *err);
 static void trace_reporter(const struct dc_posix_env *env, const char *file_name,
                            const char *function_name, size_t line_number);
 static void quit_handler(int sig_num);
-void receive_data(struct dc_posix_env *env, struct dc_error *err, int fd, size_t size);
+void echo_data(struct dc_posix_env *env, struct dc_error *err, int in_fd, int out_fd, size_t size);
 
 
 static volatile sig_atomic_t exit_flag;
 
 
-int main(void)
+int main(int argc, char *argv[])
 {
     dc_error_reporter reporter;
     dc_posix_tracer tracer;
@@ -36,7 +38,15 @@ int main(void)
     dc_error_init(&err, reporter);
     dc_posix_env_init(&env, tracer);
 
-    host_name = "localhost";
+    if(argc == 1)
+    {
+        host_name = "localhost";
+    }
+    else
+    {
+        host_name = argv[1];
+    }
+
     dc_memset(&env, &hints, 0, sizeof(hints));
     hints.ai_family =  PF_INET; // PF_INET6;
     hints.ai_socktype = SOCK_STREAM;
@@ -57,7 +67,16 @@ int main(void)
             socklen_t sockaddr_size;
 
             sockaddr = result->ai_addr;
-            port = 7123;
+
+            if(argc < 3)
+            {
+                port = 4981;
+            }
+            else
+            {
+                port = dc_uint16_from_str(&env, &err, argv[2], 10);
+            }
+
             converted_port = htons(port);
 
             if(sockaddr->sa_family == AF_INET)
@@ -87,47 +106,56 @@ int main(void)
 
             if(dc_error_has_no_error(&err))
             {
-                dc_bind(&env, &err, server_socket_fd, sockaddr, sockaddr_size);
+                dc_network_opt_ip_so_reuse_addr(&env, &err, server_socket_fd, true);
 
                 if(dc_error_has_no_error(&err))
                 {
-                    int backlog;
-
-                    backlog = 5;
-                    dc_listen(&env, &err, server_socket_fd, backlog);
+                    printf("binding to port %d\n", port);
+                    dc_bind(&env, &err, server_socket_fd, sockaddr, sockaddr_size);
 
                     if(dc_error_has_no_error(&err))
                     {
-                        struct sigaction old_action;
+                        int backlog;
 
-                        dc_sigaction(&env, &err, SIGINT, NULL, &old_action);
+                        backlog = 5;
+                        printf("listening\n");
+                        dc_listen(&env, &err, server_socket_fd, backlog);
 
-                        if(old_action.sa_handler != SIG_IGN)
+                        if(dc_error_has_no_error(&err))
                         {
-                            struct sigaction new_action;
+                            struct sigaction old_action;
 
-                            exit_flag = 0;
-                            new_action.sa_handler = quit_handler;
-                            sigemptyset(&new_action.sa_mask);
-                            new_action.sa_flags = 0;
-                            dc_sigaction(&env, &err, SIGINT, &new_action, NULL);
+                            dc_sigaction(&env, &err, SIGINT, NULL, &old_action);
 
-                            while(!(exit_flag) && dc_error_has_no_error(&err))
+                            if(old_action.sa_handler != SIG_IGN)
                             {
-                                int client_socket_fd;
+                                struct sigaction new_action;
 
-                                client_socket_fd = dc_accept(&env, &err, server_socket_fd, NULL, NULL);
+                                exit_flag = 0;
+                                new_action.sa_handler = quit_handler;
+                                sigemptyset(&new_action.sa_mask);
+                                new_action.sa_flags = 0;
+                                dc_sigaction(&env, &err, SIGINT, &new_action, NULL);
 
-                                if(dc_error_has_no_error(&err))
+                                while(!(exit_flag) && dc_error_has_no_error(&err))
                                 {
-                                    receive_data(&env, &err, client_socket_fd, 1024);
-                                    dc_close(&env, &err, client_socket_fd);
-                                }
-                                else
-                                {
-                                    if(err.type == DC_ERROR_ERRNO && err.errno_code == EINTR)
+                                    int client_socket_fd;
+
+                                    printf("accepting\n");
+                                    client_socket_fd = dc_accept(&env, &err, server_socket_fd, NULL, NULL);
+                                    printf("accepted %d\n", client_socket_fd);
+
+                                    if(dc_error_has_no_error(&err))
                                     {
-                                        dc_error_reset(&err);
+                                        echo_data(&env, &err, client_socket_fd, client_socket_fd, 1024);
+                                        dc_close(&env, &err, client_socket_fd);
+                                    }
+                                    else
+                                    {
+                                        if(err.type == DC_ERROR_ERRNO && err.errno_code == EINTR)
+                                        {
+                                            dc_error_reset(&err);
+                                        }
                                     }
                                 }
                             }
@@ -147,7 +175,7 @@ int main(void)
 }
 
 // Look at the code in the client, you could do the same thing
-void receive_data(struct dc_posix_env *env, struct dc_error *err, int fd, size_t size)
+void echo_data(struct dc_posix_env *env, struct dc_error *err, int in_fd, int out_fd, size_t size)
 {
     // more efficient would be to allocate the buffer in the caller (main) so we don't have to keep
     // mallocing and freeing the same data over and over again.
@@ -156,9 +184,15 @@ void receive_data(struct dc_posix_env *env, struct dc_error *err, int fd, size_t
 
     data = dc_malloc(env, err, size);
 
-    while(!(exit_flag) && (count = dc_read(env, err, fd, data, size)) > 0 && dc_error_has_no_error(err))
+    while(!(exit_flag) && (count = dc_read(env, err, in_fd,data, size)) > 0 && dc_error_has_no_error(err))
     {
         dc_write(env, err, STDOUT_FILENO, data, (size_t)count);
+        dc_write(env, err, out_fd, data, (size_t)count);
+
+        if(data[count - 1] == '\n')
+        {
+            break;
+        }
     }
 
     dc_free(env, data, size);

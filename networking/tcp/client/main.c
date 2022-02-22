@@ -4,6 +4,7 @@
 #include <dc_posix/dc_signal.h>
 #include <dc_posix/dc_string.h>
 #include <dc_posix/sys/dc_socket.h>
+#include <dc_util/types.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,7 +19,7 @@ static void quit_handler(int sig_num);
 static volatile sig_atomic_t exit_flag;
 
 
-int main(void)
+int main(int argc, char *argv[])
 {
     dc_error_reporter reporter;
     dc_posix_tracer tracer;
@@ -34,7 +35,15 @@ int main(void)
     dc_error_init(&err, reporter);
     dc_posix_env_init(&env, tracer);
 
-    host_name = "example.com";
+    if(argc == 1)
+    {
+        host_name = "localhost";
+    }
+    else
+    {
+        host_name = argv[1];
+    }
+
     dc_memset(&env, &hints, 0, sizeof(hints));
     hints.ai_family =  PF_INET; // PF_INET6;
     hints.ai_socktype = SOCK_STREAM;
@@ -54,8 +63,16 @@ int main(void)
             in_port_t converted_port;
             socklen_t sockaddr_size;
 
+            if(argc < 3)
+            {
+                port = 4981;
+            }
+            else
+            {
+                port = dc_uint16_from_str(&env, &err, argv[2], 10);
+            }
+
             sockaddr = result->ai_addr;
-            port = 80;
             converted_port = htons(port);
 
             if(sockaddr->sa_family == AF_INET)
