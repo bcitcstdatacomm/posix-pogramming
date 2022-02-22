@@ -5,6 +5,7 @@
 #include <dc_posix/dc_signal.h>
 #include <dc_posix/dc_string.h>
 #include <dc_posix/dc_stdlib.h>
+#include <dc_posix/arpa/dc_inet.h>
 #include <dc_posix/sys/dc_socket.h>
 #include <dc_util/types.h>
 #include <stdio.h>
@@ -140,10 +141,38 @@ int main(int argc, char *argv[])
                                 while(!(exit_flag) && dc_error_has_no_error(&err))
                                 {
                                     int client_socket_fd;
+                                    struct sockaddr *clientaddr;
+                                    socklen_t clientaddr_size;
+                                    uint16_t client_port;
+                                    char client_ip_address[40];
 
+                                    if(sockaddr->sa_family == AF_INET)
+                                    {
+                                        clientaddr_size = sizeof(struct sockaddr_in);
+                                    }
+                                    else
+                                    {
+                                        clientaddr_size = sizeof(struct sockaddr_in6);
+                                    }
+
+                                    clientaddr = dc_calloc(&env, &err, 1, clientaddr_size);
                                     printf("accepting\n");
-                                    client_socket_fd = dc_accept(&env, &err, server_socket_fd, NULL, NULL);
+                                    client_socket_fd = dc_accept(&env, &err, server_socket_fd, clientaddr, &clientaddr_size);
                                     printf("accepted %d\n", client_socket_fd);
+
+                                    if(sockaddr->sa_family == AF_INET)
+                                    {
+                                        dc_inet_ntop(&env, &err, result->ai_family, &((struct sockaddr_in *)clientaddr)->sin_addr, client_ip_address, 40);
+                                        client_port = ((struct sockaddr_in *)clientaddr)->sin_port;
+                                    }
+                                    else
+                                    {
+                                        dc_inet_ntop(&env, &err, result->ai_family, &((struct sockaddr_in6 *)clientaddr)->sin6_addr, client_ip_address, 40);
+                                        client_port = ((struct sockaddr_in6 *)clientaddr)->sin6_port;
+                                    }
+
+                                    printf("IP: %s port: %d\n", client_ip_address, ntohs(client_port));
+                                    free(clientaddr);
 
                                     if(dc_error_has_no_error(&err))
                                     {

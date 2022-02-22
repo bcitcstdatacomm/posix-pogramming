@@ -1,7 +1,7 @@
 SOURCES = main.c
 OBJECTS = main.o
 BINARY = tester
-CFLAGS += -D_POSIX_C_SOURCE=200809L -D_XOPEN_SOURCE=700
+CFLAGS += -D_POSIX_C_SOURCE=200809L -D_XOPEN_SOURCE=700 -g
 LDLIBS += -ldc_error -ldc_posix -ldc_util -ldc_network
 
 .PHONY: all
