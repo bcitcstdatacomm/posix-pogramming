@@ -7,6 +7,7 @@
 #include <dc_posix/dc_stdlib.h>
 #include <dc_posix/arpa/dc_inet.h>
 #include <dc_posix/sys/dc_socket.h>
+#include <dc_util/networking.h>
 #include <dc_util/types.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -135,7 +136,7 @@ int main(int argc, char *argv[])
                                 struct sockaddr *clientaddr;
                                 socklen_t clientaddr_size;
                                 uint16_t client_port;
-                                char client_ip_address[40];
+                                char *client_ip_address;
                                 char buffer[1024];
 
                                 if(sockaddr->sa_family == AF_INET)
@@ -150,18 +151,8 @@ int main(int argc, char *argv[])
                                 clientaddr = dc_calloc(&env, &err, 1, clientaddr_size);
                                 printf("accepting\n");
                                 dc_recvfrom(&env, &err, server_socket_fd, buffer, 1024, MSG_WAITALL, clientaddr, &clientaddr_size);
-
-                                if(sockaddr->sa_family == AF_INET)
-                                {
-                                    dc_inet_ntop(&env, &err, result->ai_family, &((struct sockaddr_in *)clientaddr)->sin_addr, client_ip_address, 40);
-                                    client_port = ((struct sockaddr_in *)clientaddr)->sin_port;
-                                }
-                                else
-                                {
-                                    dc_inet_ntop(&env, &err, result->ai_family, &((struct sockaddr_in6 *)clientaddr)->sin6_addr, client_ip_address, 40);
-                                    client_port = ((struct sockaddr_in6 *)clientaddr)->sin6_port;
-                                }
-
+                                client_ip_address = dc_inet_ntop_compat(&env, &err, clientaddr);
+                                client_port = dc_inet_get_port(&env, &err, clientaddr);
                                 printf("IP: %s port: %d\n", client_ip_address, ntohs(client_port));
                                 free(clientaddr);
                             }
