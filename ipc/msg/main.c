@@ -25,13 +25,15 @@ int main(int argc, char *argv[])
     dc_posix_tracer tracer;
     struct dc_error err;
     struct dc_posix_env env;
+    key_t key;
 
     reporter = dc_error_default_error_reporter;
     tracer = dc_posix_default_tracer;
     tracer = NULL;
     dc_error_init(&err, reporter);
     dc_posix_env_init(&env, tracer);
-    create_processes(&env, &err, 1234);
+    key = 1234;
+    create_processes(&env, &err, key);
     dc_error_reset(&err);
 
     return EXIT_SUCCESS;
@@ -68,16 +70,22 @@ static void client(struct dc_posix_env *env, struct dc_error *err, int mqid)
     struct message msg;
 
     DC_TRACE(env);
-    msg.mtype = 2;
+    msg.mtype = 5;
     dc_strcpy(env, msg.str, "hello");
+    dc_msgsnd(env, err, mqid, &msg, sizeof(msg), IPC_NOWAIT);
+    msg.mtype = 11;
+    dc_strcpy(env, msg.str, "world");
     dc_msgsnd(env, err, mqid, &msg, sizeof(msg), IPC_NOWAIT);
 }
 
-static void server(struct dc_posix_env *env, struct dc_error *err, int mqid)
-{
+static void server(struct dc_posix_env *env, struct dc_error *err, int mqid) {
     struct message msg;
 
     DC_TRACE(env);
-    dc_msgrcv(env, err, mqid, &msg, sizeof(msg), 0, 0);
-    printf("got %ld %s\n", msg.mtype, msg.str);
+
+    for (;;)
+    {
+        dc_msgrcv(env, err, mqid, &msg, sizeof(msg), 11, 0);
+        printf("got %ld %s\n", msg.mtype, msg.str);
+    }
 }
